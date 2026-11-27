@@ -43,3 +43,9 @@ test('payer and category filters combine with query (AND)', () => {
   assert.deepEqual(ids(filterExpenses(list, group, { category: 'none' })), ['4']);
   assert.deepEqual(ids(filterExpenses(list, group, { payer: 'a', q: 'ตั๋ว' })), []);
 });
+
+test('query also matches the baht equivalent of foreign bills', () => {
+  // 4800 JPY × 0.25 = ฿1,200.00
+  assert.deepEqual(ids(filterExpenses(list, group, { q: '1200' })), ['1']);
+  assert.deepEqual(ids(filterExpenses(list, group, { q: '1,200' })), ['1']);
+});

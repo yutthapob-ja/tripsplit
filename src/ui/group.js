@@ -7,9 +7,11 @@ import { formatAmount } from '../core/money.js';
 import { newId } from '../core/model.js';
 import { go } from '../router.js';
 import { categoryOf, categoryTotals } from '../core/categories.js';
+import { filterExpenses } from '../core/search.js';
 import { openQrSheet } from './qr-sheet.js';
 
 const tabState = {};
+const filterState = {}; // groupId -> { q, payer, category }
 const THB = (s) => '฿' + formatAmount(s, 'THB');
 
 export async function groupView(root, { id }) {
@@ -26,9 +28,59 @@ export async function groupView(root, { id }) {
 
   function billsTab() {
     if (!expenses.length) return h('div.empty', h('div.empty-emoji', group.kind === 'meal' ? '🍜' : '🧾'), h('p.title', 'ยังไม่มีบิลเลย'), h('p', 'จ่ายอะไรไปก็กด “+ เพิ่มบิล” ได้เลย'));
+    const f = filterState[id] || (filterState[id] = { q: '', payer: null, category: null });
+    const bar = h('div.flt-bar');
+    const info = h('div.flt-info');
+    const host = h('div');
+    const active = () => !!(f.q.trim() || f.payer || f.category);
+    function renderList() {
+      const list = filterExpenses(expenses, group, f);
+      if (active()) {
+        const sum = list.reduce((s, e) => s + (expenseTotalTHB(e, group) || 0), 0);
+        info.replaceChildren(h('span.flt-count', `พบ ${list.length} บิล · รวม ${THB(sum)}`),
+          h('button.flt-clear', { type: 'button', on: { click: () => {
+            f.q = ''; f.payer = null; f.category = null; input.value = '';
+            for (const c of chipRow.querySelectorAll('.chip.on')) c.classList.remove('on');
+            renderList();
+          } } }, 'ล้างตัวกรอง'));
+      } else info.replaceChildren();
+      host.replaceChildren(list.length ? listItems(list)
+        : h('div.empty', h('div.empty-emoji', '🔎'), h('p', 'ไม่เจอบิลที่ตรงกับคำค้น')));
+    }
+    let composing = false;
+    const input = h('input.flt-input', { type: 'search', placeholder: 'ค้นหาบิล ชื่อ คนจ่าย หมวด หรือยอด', 'aria-label': 'ค้นหาบิล',
+      value: f.q, enterkeyhint: 'search', autocomplete: 'off',
+      on: {
+        compositionstart: () => { composing = true; },
+        compositionend: () => { composing = false; f.q = input.value; renderList(); },
+        input: () => { if (composing) return; f.q = input.value; renderList(); },
+      } });
+    const payerIds = [...new Set(expenses.flatMap((e) => e.payers.map((p) => p.memberId)))];
+    const payerMembers = group.members.filter((m) => payerIds.includes(m.id));
+    const catIds = [...new Set(expenses.map((e) => categoryOf(e.category).id))];
+    const chipRow = h('div.chips.flt-chips');
+    const mkChip = (key, val, kids, label) => {
+      const c = h('button.chip.flt-chip', { type: 'button', 'aria-label': label, class: f[key] === val ? 'on' : '', on: { click: () => {
+        f[key] = f[key] === val ? null : val;
+        for (const x of chipRow.querySelectorAll(`.chip[data-k="${key}"]`)) x.classList.toggle('on', x.dataset.v === f[key]);
+        renderList();
+      } } }, kids);
+      c.dataset.k = key; c.dataset.v = val;
+      return c;
+    };
+    chipRow.append(
+      ...payerMembers.map((m) => mkChip('payer', m.id, [avatar(m, 22), h('span', m.name)], `คนจ่าย ${m.name}`)),
+      payerMembers.length && catIds.length ? h('span.flt-div', { 'aria-hidden': 'true' }) : '',
+      ...catIds.map((cid) => { const c = categoryOf(cid); return mkChip('category', cid, `${c.emoji} ${c.label}`, `หมวด ${c.label}`); }));
+    bar.append(h('div.flt-search', h('span.flt-ico', { 'aria-hidden': 'true' }, '🔍'), input), chipRow);
+    renderList();
+    return h('div', bar, info, host);
+  }
+
+  function listItems(list) {
     let lastDate = '';
     const items = [];
-    for (const e of expenses) {
+    for (const e of list) {
       if (e.date !== lastDate) {
         lastDate = e.date;
         items.push(h('li.row.sub', { style: 'min-height:36px;padding:8px 16px' }, new Date(e.date + 'T00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })));
