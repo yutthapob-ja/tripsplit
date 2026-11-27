@@ -53,6 +53,7 @@ export async function groupSettingsView(root, { id }) {
   const rateCodes = Object.keys(group.rates);
   function drawRates() {
     rateBox.replaceChildren(
+      h('div.inline.base-row', h('span.shrink', '฿'), h('span', h('b', 'บาท (THB)'), ' — สกุลหลัก ไม่ต้องตั้งเรต')),
       ...rateCodes.map((code) => {
         const input = h('input', { inputmode: 'decimal', placeholder: 'เช่น 0.23', value: group.rates[code] ? String(group.rates[code]) : '',
           'aria-label': `เรต ${code}`, class: group.rates[code] ? '' : 'invalid' });
@@ -105,8 +106,8 @@ export async function groupSettingsView(root, { id }) {
     h('div.inline', { style: 'margin-top:10px' }, newMember,
       h('button.btn.shrink', { type: 'button', on: { click: () => { addMember(newMember.value); newMember.value = ''; newMember.focus(); } } }, 'เพิ่ม')),
     h('div', { style: 'margin-top:10px' }, sugBox),
-    h('h2', 'เรตกลาง (แปลงเป็นบาท)'),
-    h('div.card.pad', rateBox, h('p.hint', 'บิลสกุลอื่นจะแปลงด้วยเรตนี้ แก้เป็นยอดบาทจริงได้ทีละบิล')),
+    h('h2', 'สกุลเงินที่ใช้ในทริป'),
+    h('div.card.pad', rateBox, h('p.hint', 'บิลเงินบาทใช้ได้เลย สกุลอื่นใส่เรตแลกเป็นบาทไว้ (แก้เป็นยอดบาทจริงได้ทีละบิล)')),
     h('div', { style: 'margin-top:24px' }, h('button.btn.primary.block', { type: 'button', on: { click: save } }, 'บันทึก')),
     isNew ? '' : h('div', { style: 'margin-top:12px' }, h('button.btn.danger.block', { type: 'button', on: { click: async () => {
       if (!(await confirmBox(`ลบ “${group.name}” และบิลทั้งหมด? กู้คืนไม่ได้ถ้าไม่ได้สำรองไว้`))) return;

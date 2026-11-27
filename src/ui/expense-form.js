@@ -2,7 +2,7 @@ import { h, header, toast, confirmBox } from './dom.js';
 import { getAll, getByGroup, put, del } from '../store.js';
 import { validateExpense, expenseTotalTHB } from '../core/split.js';
 import { parseAmount, formatAmount, toSatang } from '../core/money.js';
-import { CURRENCIES, decimalsOf } from '../core/currencies.js';
+import { CURRENCIES, decimalsOf, labelOf } from '../core/currencies.js';
 import { newId, rescaleExpense } from '../core/model.js';
 import { go } from '../router.js';
 
@@ -46,8 +46,16 @@ export async function expenseFormView(root, { id, eid }) {
   // ---- elements
   const titleIn = h('input', { value: e.title, placeholder: 'เช่น ราเมง, ตั๋วรถไฟ', maxlength: 80 });
   const amountIn = h('input.big', { inputmode: 'decimal', placeholder: '0', value: toText(e.amount, e.currency), 'aria-label': 'ยอดเงิน' });
-  const currencySel = h('select.shrink', { style: 'width:auto', 'aria-label': 'สกุลเงิน' },
-    CURRENCIES.map((c) => h('option', { value: c.code, selected: c.code === e.currency }, c.code)));
+  const currencySel = h('select.shrink', { style: 'width:104px;flex:0 0 104px', 'aria-label': 'สกุลเงิน' },
+    CURRENCIES.map((c) => h('option', { value: c.code, selected: c.code === e.currency }, `${c.code} ${c.label}`)));
+  // quick-pick chips: baht + the currencies this group has rates for
+  const quickCodes = [...new Set(['THB', ...Object.keys(group.rates)])];
+  const quickBox = h('div.chips', { style: 'margin-top:8px' });
+  function drawQuick() {
+    quickBox.replaceChildren(...quickCodes.map((code) => h('button.chip', { type: 'button', class: e.currency === code ? 'on' : '',
+      on: { click: () => { if (e.currency === code) return; currencySel.value = code; currencySel.dispatchEvent(new Event('change')); } } },
+      `${code === 'THB' ? '฿ ' : ''}${labelOf(code)}`)));
+  }
   const dateIn = h('input', { type: 'date', value: e.date });
   const fxBox = h('div');
   const payersBox = h('div.stack');
@@ -74,7 +82,7 @@ export async function expenseFormView(root, { id, eid }) {
     Object.assign(e, { currency: to, amount: r.amount, payers: r.payers, split: splits[e.split.type], actualTHB: null });
     for (const k of Object.keys(tabAmount)) tabAmount[k] = rescaleExpense({ amount: tabAmount[k], payers: [], split: {} }, from, to).amount;
     amountIn.value = toText(e.amount, e.currency);
-    drawFx(); drawPayers(); drawSplit(); refresh();
+    drawQuick(); drawFx(); drawPayers(); drawSplit(); refresh();
   });
 
   function drawFx() {
@@ -208,10 +216,11 @@ export async function expenseFormView(root, { id, eid }) {
     go(`#/g/${id}`);
   });
 
-  drawFx(); drawPayers(); drawSplit(); refresh();
+  drawQuick(); drawFx(); drawPayers(); drawSplit(); refresh();
   root.append(
     header(found ? 'แก้บิล' : 'เพิ่มบิล', { back: `#/g/${id}` }),
     h('div.inline', { style: 'margin-top:8px' }, amountIn, currencySel),
+    quickBox,
     h('label.field', h('span', 'ชื่อบิล'), titleIn),
     fxBox,
     h('h2', 'ใครจ่าย'), payersBox,

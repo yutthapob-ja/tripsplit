@@ -1,4 +1,4 @@
-const VERSION = '795052d534';
+const VERSION = '82b045ba06';
 const CACHE = 'tripsplit-' + VERSION;
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',

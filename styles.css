@@ -130,3 +130,5 @@ h2 { color: var(--text); font-weight: 800; font-size: 16px; }
   border: 0; border-radius: 999px; font: inherit; font-weight: 700; color: #fff; cursor: pointer;
   background: linear-gradient(135deg, #7C5CFF, #B06CFF); box-shadow: 0 8px 22px rgba(124, 92, 255, .35); }
 input.invalid { border-color: var(--neg); }
+.base-row { padding: 6px 4px 10px; border-bottom: 1px dashed var(--line); margin-bottom: 4px; color: var(--muted); }
+.base-row b { color: var(--text); }
