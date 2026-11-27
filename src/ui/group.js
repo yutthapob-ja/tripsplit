@@ -66,7 +66,7 @@ export async function groupView(root, { id }) {
         : h('div.card.pad.muted', 'เคลียร์ครบแล้ว 🎉'),
       settlements.length ? [h('h2', 'โอนคืนแล้ว'), h('ul.list.card', settlements.map((s) => h('li.row',
         h('div.grow.sub', `${name(s.from)} → ${name(s.to)} ${THB(s.amount)}`),
-        h('button.icon-btn.small', { type: 'button', 'aria-label': 'ยกเลิก', on: { click: async () => { await del('settlements', s.id); go(`#/g/${id}`); } } }, '↺'))))] : null,
+        h('button.icon-btn.small', { type: 'button', 'aria-label': 'ยกเลิก', on: { click: async () => { await del('settlements', s.id); go(`#/g/${id}`); } } }, '↺'))))] : '',
       h('label.row', { style: 'padding:14px 4px' },
         h('input', { type: 'checkbox', style: 'width:22px;min-height:22px', checked: roundBaht, on: { change: (e) => (roundBaht = e.target.checked) } }),
         h('span', 'ปัดเป็นบาทเต็มตอนคัดลอก')),
