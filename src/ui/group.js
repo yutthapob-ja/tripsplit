@@ -47,8 +47,11 @@ export async function groupView(root, { id }) {
   function summaryTab() {
     const bal = balances(group, expenses, settlements);
     const transfers = simplify(bal);
+    const missing = expenses.filter((e) => expenseTotalTHB(e, group) == null).length;
     const box = h('div');
     box.append(
+      missing ? h('div.banner', h('span.grow', `⚠️ ยังไม่รวม ${missing} บิลที่ไม่มีเรตแลกเงิน`),
+        h('a.btn.small', { href: `#/g/${id}/settings` }, 'ตั้งเรต')) : '',
       h('div.total-card', h('div.sub', `ยอดรวมทั้งหมด ${group.kind === 'meal' ? '🍜' : '✈️'}`), h('div.total', THB(total)),
         h('div.sub', `${group.members.length} คน · เฉลี่ยคนละ ${THB(Math.round(total / Math.max(1, group.members.length)))}`)),
       h('h2', 'ยอดสุทธิรายคน'),

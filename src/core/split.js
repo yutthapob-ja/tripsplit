@@ -83,6 +83,7 @@ export function validateExpense(expense, group) {
   if (s.type === 'items') {
     if (!(s.items || []).length) errs.push('ใส่รายการอาหารอย่างน้อย 1 จาน');
     if ((s.items || []).some((it) => !(it.memberIds || []).length)) errs.push('ทุกจานต้องเลือกคนกิน');
+    else if (!(itemsBreakdown(s, group.members).computedTotal > 0)) errs.push('ใส่ราคาอาหารอย่างน้อย 1 จาน');
   }
   const refs = [...(expense.payers || []).map((p) => p.memberId), ...(s.memberIds || []), ...Object.keys(s.amounts || {})];
   if (refs.some((id) => !memberIds.has(id))) errs.push('มีชื่อที่ไม่ได้อยู่ในกลุ่มแล้ว');

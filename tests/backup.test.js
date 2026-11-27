@@ -54,3 +54,15 @@ test('non-object / null JSON never throws', () => {
 test('backupFilename uses local date', () => {
   assert.equal(backupFilename(new Date(2026, 10, 27)), 'tripsplit-backup-2026-11-27.json');
 });
+
+test('parseBackup rejects null records, missing ids and orphan groupIds', async () => {
+  const { parseBackup } = await import('../src/core/backup.js');
+  const wrap = (o) => JSON.stringify({ app: 'TripSplit', schemaVersion: 1, groups: [], expenses: [], settlements: [], ...o });
+  assert.equal(parseBackup(wrap({ groups: [null] })).ok, false);
+  assert.equal(parseBackup(wrap({ groups: [{ name: 'x', members: [] }] })).ok, false);
+  assert.equal(parseBackup(wrap({ groups: [{ id: 'g', name: 'x' }] })).ok, false);
+  assert.equal(parseBackup(wrap({ groups: [{ id: 'g', members: [] }], expenses: [{ id: 'e', groupId: 'nope' }] })).ok, false);
+  assert.equal(parseBackup(wrap({ groups: [{ id: 'g', members: [] }], settlements: [{ id: 's', groupId: 'nope' }] })).ok, false);
+  assert.equal(parseBackup(wrap({ schemaVersion: -1 })).ok, false);
+  assert.equal(parseBackup(wrap({ groups: [{ id: 'g', members: [] }], expenses: [{ id: 'e', groupId: 'g' }] })).ok, true);
+});

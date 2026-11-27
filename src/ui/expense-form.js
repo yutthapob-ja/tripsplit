@@ -3,7 +3,7 @@ import { getAll, getByGroup, put, del } from '../store.js';
 import { validateExpense, expenseTotalTHB } from '../core/split.js';
 import { parseAmount, formatAmount, toSatang } from '../core/money.js';
 import { CURRENCIES, decimalsOf } from '../core/currencies.js';
-import { newId } from '../core/model.js';
+import { newId, rescaleExpense } from '../core/model.js';
 import { go } from '../router.js';
 
 const editors = {};
@@ -38,6 +38,7 @@ export async function expenseFormView(root, { id, eid }) {
   const splits = { equal: { type: 'equal', memberIds: [...allIds] }, exact: { type: 'exact', amounts: {} },
     items: { type: 'items', items: [], servicePct: 0, vatPct: 0, billTotal: null } };
   splits[e.split.type] = e.split;
+  const tabAmount = {}; // amount typed while on equal/exact, restored when leaving the items tab
 
   const name = (mid) => group.members.find((m) => m.id === mid)?.name ?? '?';
   const dec = () => decimalsOf(e.currency);
@@ -67,12 +68,13 @@ export async function expenseFormView(root, { id, eid }) {
     setAmount(parseAmount(amountIn.value, dec()) ?? 0);
   });
   currencySel.addEventListener('change', () => {
-    e.currency = currencySel.value;
-    e.actualTHB = null;
-    const parsed = parseAmount(amountIn.value, dec());
-    if (parsed == null && amountIn.value) { amountIn.value = ''; setAmount(0); }
-    else setAmount(parsed ?? 0);
-    drawSplit();
+    const from = e.currency, to = currencySel.value;
+    const r = rescaleExpense({ ...e, split: e.split }, from, to);
+    for (const k of Object.keys(splits)) splits[k] = k === e.split.type ? r.split : rescaleExpense({ amount: 0, payers: [], split: splits[k] }, from, to).split;
+    Object.assign(e, { currency: to, amount: r.amount, payers: r.payers, split: splits[e.split.type], actualTHB: null });
+    for (const k of Object.keys(tabAmount)) tabAmount[k] = rescaleExpense({ amount: tabAmount[k], payers: [], split: {} }, from, to).amount;
+    amountIn.value = toText(e.amount, e.currency);
+    drawFx(); drawPayers(); drawSplit(); refresh();
   });
 
   function drawFx() {
@@ -130,7 +132,14 @@ export async function expenseFormView(root, { id, eid }) {
     const types = [['equal', 'หารเท่ากัน'], ['exact', 'ระบุจำนวน']];
     if (editors.items) types.push(['items', 'ทีละจาน']);
     splitTabs.replaceChildren(...types.map(([k, t]) => h('button', { type: 'button', class: e.split.type === k ? 'on' : '',
-      on: { click: () => { e.split = splits[k]; amountIn.readOnly = k === 'items'; drawSplit(); refresh(); } } }, t)));
+      on: { click: () => {
+        if (k === e.split.type) return;
+        if (e.split.type !== 'items') tabAmount.manual = e.amount;
+        e.split = splits[k];
+        amountIn.readOnly = k === 'items';
+        if (k !== 'items' && tabAmount.manual != null) setAmount(tabAmount.manual, { fromEditor: true });
+        drawSplit(); refresh();
+      } } }, t)));
     amountIn.readOnly = e.split.type === 'items';
     const s = e.split;
     if (s.type === 'equal') {

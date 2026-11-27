@@ -1,3 +1,4 @@
+import { rescaleMinor } from './money.js';
 export function newId() {
   return crypto.randomUUID();
 }
@@ -39,4 +40,37 @@ export function canRemoveMember(memberId, expenses, settlements) {
 export function recentMemberNames(groups) {
   const sorted = [...groups].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   return [...new Set(sorted.flatMap((g) => g.members.map((m) => m.name)))];
+}
+
+/** Validate edited member list: trims, drops blank-named unreferenced members, rejects duplicates. */
+export function checkMemberEdits(members, expenses, settlements) {
+  const kept = [];
+  for (const m of members) {
+    const name = (m.name || '').trim();
+    if (name) { kept.push({ ...m, name }); continue; }
+    const r = canRemoveMember(m.id, expenses, settlements);
+    if (!r.ok) return { ok: false, error: `ชื่อว่างไม่ได้ — คนนี้อยู่ในบิล: ${r.usedIn.slice(0, 3).join(', ')}` };
+  }
+  const names = kept.map((m) => m.name);
+  const dup = names.find((n, i) => names.indexOf(n) !== i);
+  if (dup) return { ok: false, error: `มีชื่อ “${dup}” ซ้ำกัน` };
+  return { ok: true, members: kept };
+}
+
+/** Number of bills that depend on the group rate for `code` (no actual baht). */
+export function rateUsage(code, expenses) {
+  return expenses.filter((e) => e.currency === code && e.actualTHB == null).length;
+}
+
+/** Copy of an expense with every minor-unit field re-expressed for a new currency. */
+export function rescaleExpense(e, fromCode, toCode) {
+  const r = (v) => rescaleMinor(v, fromCode, toCode);
+  const out = structuredClone(e);
+  out.amount = r(out.amount);
+  out.payers = (out.payers || []).map((p) => ({ ...p, amount: r(p.amount) }));
+  const s = out.split || {};
+  if (s.amounts) s.amounts = Object.fromEntries(Object.entries(s.amounts).map(([k, v]) => [k, r(v)]));
+  if (s.items) s.items = s.items.map((it) => ({ ...it, price: r(it.price) }));
+  if (s.billTotal != null) s.billTotal = r(s.billTotal);
+  return out;
 }

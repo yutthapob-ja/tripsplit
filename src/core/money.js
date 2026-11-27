@@ -43,3 +43,10 @@ export function toSatang(minor, code, rate) {
   if (code === 'THB') return minor;
   return Math.round((minor * rate * 100) / 10 ** decimalsOf(code));
 }
+
+/** Re-express an amount in minor units of `toCode` (same major value). */
+export function rescaleMinor(minor, fromCode, toCode) {
+  const diff = decimalsOf(toCode) - decimalsOf(fromCode);
+  if (diff === 0 || minor == null) return minor;
+  return diff > 0 ? minor * 10 ** diff : Math.round(minor / 10 ** -diff);
+}

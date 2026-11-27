@@ -103,3 +103,9 @@ test('validateExpense requires eaters for each item', () => {
 test('valid expense has no errors', () => {
   assert.deepEqual(validateExpense(base(), group), []);
 });
+
+test('itemized bill with real total but no priced dishes is invalid', () => {
+  const split = { type: 'items', items: [{ name: 'x', price: 0, memberIds: ['a'] }], servicePct: 0, vatPct: 0, billTotal: 85000 };
+  const errs = validateExpense(base({ amount: 85000, payers: [{ memberId: 'a', amount: 85000 }], split }), group);
+  assert.ok(errs.some((e) => e.includes('ราคา')));
+});

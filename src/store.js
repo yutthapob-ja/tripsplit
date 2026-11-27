@@ -76,12 +76,19 @@ export async function replaceAll({ groups, expenses, settlements }) {
   const db = await openDB();
   const tx = db.transaction(DATA_STORES, 'readwrite');
   const data = { groups, expenses, settlements };
-  for (const name of DATA_STORES) {
-    const store = tx.objectStore(name);
-    store.clear();
-    for (const obj of data[name]) store.put(obj);
+  const done = txDone(tx);
+  try {
+    for (const name of DATA_STORES) {
+      const store = tx.objectStore(name);
+      store.clear();
+      for (const obj of data[name]) store.put(obj);
+    }
+  } catch (err) {
+    try { tx.abort(); } catch { /* already finished */ }
+    await done.catch(() => {});
+    throw err;
   }
-  await txDone(tx);
+  await done;
 }
 
 export async function getMeta(key) {

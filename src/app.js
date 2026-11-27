@@ -4,6 +4,9 @@ import { groupView } from './ui/group.js';
 import { groupSettingsView } from './ui/group-settings.js';
 import { expenseFormView } from './ui/expense-form.js';
 import { requestPersist } from './store.js';
+import './ui/items-editor.js';
+import { backupView, initBackupReminder } from './ui/backup-ui.js';
+import { h } from './ui/dom.js';
 
 route('/', groupsView);
 route('/new', (root) => groupSettingsView(root, {}));
@@ -11,14 +14,18 @@ route('/g/:id', groupView);
 route('/g/:id/settings', groupSettingsView);
 route('/g/:id/new', expenseFormView);
 route('/g/:id/e/:eid', expenseFormView);
-route('/backup', async (root, p) => (await import('./ui/backup-ui.js')).backupView(root, p));
+route('/backup', backupView);
 
-// Optional modules (built in later tasks) — app still runs if missing.
-import('./ui/items-editor.js').catch(() => {});
-import('./ui/backup-ui.js').then((m) => m.initBackupReminder?.()).catch(() => {});
+initBackupReminder();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e));
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || document.getElementById('update-bar')) return;
+    document.body.append(h('button.update-bar', { id: 'update-bar', type: 'button', on: { click: () => location.reload() } },
+      '✨ มีเวอร์ชันใหม่ — แตะเพื่อโหลดใหม่'));
+  });
 }
 requestPersist().catch(() => {});
 start();

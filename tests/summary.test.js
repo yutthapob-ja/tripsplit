@@ -23,3 +23,10 @@ test('summary says settled when nothing owed', () => {
   const s = summaryText(group, [], []);
   assert.ok(s.includes('เคลียร์ครบแล้ว'));
 });
+
+test('summary warns when some bills have no rate and are excluded', () => {
+  const krw = { ...e, id: 'k', currency: 'KRW', amount: 5000, payers: [{ memberId: 'a', amount: 5000 }] };
+  const s = summaryText(group, [e, krw], []);
+  assert.ok(s.includes('⚠️'));
+  assert.ok(s.includes('1 บิล'));
+});

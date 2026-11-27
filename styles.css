@@ -125,3 +125,8 @@ a.row { transition: transform .12s ease, background .12s; }
 .empty p { margin: 4px 0; }
 .fab { box-shadow: 0 10px 24px rgba(255, 107, 74, .4); }
 h2 { color: var(--text); font-weight: 800; font-size: 16px; }
+
+.update-bar { position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top) + 10px); z-index: 30; min-height: 48px;
+  border: 0; border-radius: 999px; font: inherit; font-weight: 700; color: #fff; cursor: pointer;
+  background: linear-gradient(135deg, #7C5CFF, #B06CFF); box-shadow: 0 8px 22px rgba(124, 92, 255, .35); }
+input.invalid { border-color: var(--neg); }

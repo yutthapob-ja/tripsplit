@@ -12,29 +12,35 @@ function fmtDate(iso) {
   return d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-async function doBackup() {
-  const [groups, expenses, settlements] = await Promise.all([
-    getAll('groups'), getAll('expenses'), getAll('settlements'),
-  ]);
-  const json = serialize({ groups, expenses, settlements });
-  const file = new File([json], backupFilename(new Date()), { type: 'application/json' });
-  if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'TripSplit backup' });
-  } else {
-    const url = URL.createObjectURL(file);
+function download(file) {
+  const url = URL.createObjectURL(file);
     const a = h('a', { href: url, download: file.name });
     document.body.append(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/** `file` is prebuilt so share() runs inside the tap (iOS needs a fresh user gesture). */
+async function doBackup(file) {
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'TripSplit backup' });
+    } catch (err) {
+      if (err?.name !== 'NotAllowedError') throw err;
+      download(file);
+    }
+  } else {
+    download(file);
   }
   await setMeta('lastBackupAt', new Date().toISOString());
 }
 
 export async function backupView(root) {
-  const [groups, expenses, last] = await Promise.all([
-    getAll('groups'), getAll('expenses'), getMeta('lastBackupAt'),
+  const [groups, expenses, settlements, last] = await Promise.all([
+    getAll('groups'), getAll('expenses'), getAll('settlements'), getMeta('lastBackupAt'),
   ]);
+  const file = new File([serialize({ groups, expenses, settlements })], backupFilename(new Date()), { type: 'application/json' });
   let persisted = false;
   try { persisted = !!(await navigator.storage?.persisted?.()); } catch { /* ignore */ }
 
@@ -46,7 +52,7 @@ export async function backupView(root) {
       click: async () => {
         backupBtn.disabled = true;
         try {
-          await doBackup();
+          await doBackup(file);
           lastEl.textContent = fmtDate(new Date().toISOString());
           toast('สำรองข้อมูลแล้ว');
         } catch (err) {

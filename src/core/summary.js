@@ -9,9 +9,10 @@ export function summaryText(group, expenses, settlements, { roundBaht = false } 
   const name = (id) => group.members.find((m) => m.id === id)?.name ?? '?';
   const paid = {}, owed = {};
   let total = 0;
+  let missing = 0;
   for (const e of expenses) {
     const t = expenseTotalTHB(e, group);
-    if (t == null) continue;
+    if (t == null) { missing++; continue; }
     total += t;
     const s = expenseShares(e, group);
     for (const [id, v] of Object.entries(s.paid)) paid[id] = (paid[id] || 0) + v;
@@ -30,5 +31,6 @@ export function summaryText(group, expenses, settlements, { roundBaht = false } 
     lines.push('💸 ต้องโอน');
     for (const t of transfers) lines.push(`${name(t.from)} → ${name(t.to)} ฿${fmt(t.amount)}`);
   }
+  if (missing) lines.push('', `⚠️ ยังไม่รวม ${missing} บิลที่ไม่มีเรตแลกเงิน`);
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }

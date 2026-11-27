@@ -17,12 +17,18 @@ export function parseBackup(text) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj) || obj.app !== 'TripSplit') {
     return fail('ไม่ใช่ไฟล์สำรองของ TripSplit');
   }
-  if (typeof obj.schemaVersion !== 'number') return fail('ไฟล์สำรองไม่สมบูรณ์ (ไม่มีเวอร์ชัน)');
+  if (!Number.isInteger(obj.schemaVersion) || obj.schemaVersion < 1) return fail('ไฟล์สำรองไม่สมบูรณ์ (ไม่มีเวอร์ชัน)');
   if (obj.schemaVersion > SCHEMA_VERSION) {
     return fail('ไฟล์มาจากเวอร์ชันใหม่กว่า กรุณาอัปเดตแอปก่อนกู้คืน');
   }
   for (const k of ['groups', 'expenses', 'settlements']) {
     if (!Array.isArray(obj[k])) return fail(`ไฟล์สำรองไม่สมบูรณ์ (ไม่มีข้อมูล ${k})`);
+  }
+  const okId = (r) => r && typeof r === 'object' && typeof r.id === 'string' && r.id !== '';
+  if (!obj.groups.every((g) => okId(g) && Array.isArray(g.members))) return fail('ไฟล์สำรองเสีย (ข้อมูลกลุ่มไม่ถูกต้อง)');
+  const ids = new Set(obj.groups.map((g) => g.id));
+  for (const k of ['expenses', 'settlements']) {
+    if (!obj[k].every((r) => okId(r) && ids.has(r.groupId))) return fail('ไฟล์สำรองเสีย (มีรายการที่ไม่มีกลุ่ม)');
   }
   return { ok: true, data: { groups: obj.groups, expenses: obj.expenses, settlements: obj.settlements } };
 }

@@ -45,3 +45,45 @@ test('recentMemberNames returns unique names newest group first', () => {
   ];
   assert.deepEqual(recentMemberNames(groups), ['บี', 'ซี', 'เก่า']);
 });
+
+import { checkMemberEdits, rateUsage, rescaleExpense } from '../src/core/model.js';
+
+test('blanking a referenced member name is blocked', () => {
+  const before = [{ id: 'a', name: 'จา' }, { id: 'b', name: 'บี' }, { id: 'q', name: 'คิว' }];
+  const after = [{ id: 'a', name: 'จา' }, { id: 'b', name: ' ' }, { id: 'q', name: '' }];
+  const r = checkMemberEdits(after, expenses, []);
+  assert.equal(r.ok, false);
+  assert.ok(r.error.includes('บี') || r.error.includes('ราเมง'));
+  void before;
+});
+
+test('blanking an unreferenced member name removes them', () => {
+  const r = checkMemberEdits([{ id: 'a', name: 'จา' }, { id: 'q', name: '' }], expenses, []);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.members.map((m) => m.id), ['a']);
+});
+
+test('duplicate names are rejected', () => {
+  assert.equal(checkMemberEdits([{ id: 'x', name: 'จา' }, { id: 'y', name: ' จา' }], [], []).ok, false);
+});
+
+test('rateUsage counts bills relying on a rate (no actual baht)', () => {
+  const ex = [
+    { currency: 'JPY', actualTHB: null }, { currency: 'JPY', actualTHB: 500 }, { currency: 'KRW', actualTHB: null },
+  ];
+  assert.equal(rateUsage('JPY', ex), 1);
+  assert.equal(rateUsage('USD', ex), 0);
+});
+
+test('rescaleExpense converts minor-unit fields between decimal places', () => {
+  const e = { currency: 'THB', amount: 12050, payers: [{ memberId: 'a', amount: 12050 }],
+    split: { type: 'items', items: [{ price: 12050, memberIds: ['a'] }], servicePct: 0, vatPct: 0, billTotal: 13000 } };
+  const j = rescaleExpense(e, 'THB', 'JPY');
+  assert.equal(j.amount, 121);
+  assert.equal(j.payers[0].amount, 121);
+  assert.equal(j.split.items[0].price, 121);
+  assert.equal(j.split.billTotal, 130);
+  const back = rescaleExpense({ currency: 'JPY', amount: 120, payers: [], split: { type: 'exact', amounts: { a: 120 } } }, 'JPY', 'THB');
+  assert.equal(back.amount, 12000);
+  assert.equal(back.split.amounts.a, 12000);
+});

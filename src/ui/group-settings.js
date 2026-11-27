@@ -1,6 +1,6 @@
 import { h, header, toast, confirmBox, avatar } from './dom.js';
 import { getAll, getByGroup, put, deleteGroup } from '../store.js';
-import { newGroup, newId, canRemoveMember, recentMemberNames } from '../core/model.js';
+import { newGroup, newId, canRemoveMember, recentMemberNames, checkMemberEdits, rateUsage } from '../core/model.js';
 import { CURRENCIES } from '../core/currencies.js';
 import { go } from '../router.js';
 
@@ -49,29 +49,46 @@ export async function groupSettingsView(root, { id }) {
       h('button.chip', { type: 'button', on: { click: () => addMember(n) } }, '+ ' + n)));
   }
 
+  // rows shown = saved rates + newly added (empty until a valid rate is typed)
+  const rateCodes = Object.keys(group.rates);
   function drawRates() {
-    const codes = Object.keys(group.rates);
     rateBox.replaceChildren(
-      ...codes.map((code) => h('div.inline',
-        h('span.shrink', `1 ${code} =`),
-        h('input', { inputmode: 'decimal', value: String(group.rates[code]), 'aria-label': `เรต ${code}`,
-          on: { input: (e) => { const v = Number(e.target.value.replace(/,/g, '')); if (v > 0) group.rates[code] = v; } } }),
-        h('span.shrink', 'บาท'),
-        h('button.icon-btn.small.shrink', { type: 'button', 'aria-label': 'ลบเรต', on: { click: () => { delete group.rates[code]; drawRates(); } } }, '✕'))),
+      ...rateCodes.map((code) => {
+        const input = h('input', { inputmode: 'decimal', placeholder: 'เช่น 0.23', value: group.rates[code] ? String(group.rates[code]) : '',
+          'aria-label': `เรต ${code}`, class: group.rates[code] ? '' : 'invalid' });
+        input.addEventListener('input', () => {
+          const v = Number(input.value.replace(/,/g, ''));
+          if (input.value.trim() && v > 0) { group.rates[code] = v; input.classList.remove('invalid'); }
+          else { delete group.rates[code]; input.classList.add('invalid'); }
+        });
+        return h('div.inline', h('span.shrink', `1 ${code} =`), input, h('span.shrink', 'บาท'),
+          h('button.icon-btn.small.shrink', { type: 'button', 'aria-label': 'ลบเรต ' + code, on: { click: () => {
+            const n = rateUsage(code, expenses);
+            if (n) return toast(`ลบไม่ได้ — มี ${n} บิล ${code} ที่ใช้เรตนี้อยู่`);
+            delete group.rates[code];
+            rateCodes.splice(rateCodes.indexOf(code), 1);
+            drawRates();
+          } } }, '✕'));
+      }),
       h('select', { 'aria-label': 'เพิ่มสกุลเงิน', on: { change: (e) => {
         if (!e.target.value) return;
-        group.rates[e.target.value] = group.rates[e.target.value] || 1;
+        rateCodes.push(e.target.value);
         drawRates();
+        rateBox.querySelector(`input[aria-label="เรต ${e.target.value}"]`)?.focus();
       } } },
         h('option', { value: '' }, '+ เพิ่มสกุลเงิน'),
-        CURRENCIES.filter((c) => c.code !== 'THB' && !codes.includes(c.code)).map((c) => h('option', { value: c.code }, `${c.code} · ${c.label}`))),
+        CURRENCIES.filter((c) => c.code !== 'THB' && !rateCodes.includes(c.code)).map((c) => h('option', { value: c.code }, `${c.code} · ${c.label}`))),
     );
   }
 
   async function save() {
     group.name = nameInput.value.trim();
-    group.members = group.members.map((m) => ({ ...m, name: m.name.trim() })).filter((m) => m.name);
     if (!group.name) return toast('ใส่ชื่อก่อน');
+    const chk = checkMemberEdits(group.members, expenses, settlements);
+    if (!chk.ok) return toast(chk.error);
+    const unset = rateCodes.filter((c) => !(group.rates[c] > 0));
+    if (unset.length) return toast(`ใส่เรต ${unset.join(', ')} ก่อน หรือกด ✕ เอาออก`);
+    group.members = chk.members;
     if (!group.members.length) return toast('เพิ่มสมาชิกอย่างน้อย 1 คน');
     group.updatedAt = new Date().toISOString();
     await put('groups', group);
