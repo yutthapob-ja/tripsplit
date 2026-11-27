@@ -1,4 +1,5 @@
-import { h } from './dom.js';
+import { h, toast } from './dom.js';
+import { openReceiptSheet } from './receipt-sheet.js';
 import { registerSplitEditor } from './expense-form.js';
 import { itemsBreakdown } from '../core/split.js';
 import { parseAmount, formatAmount } from '../core/money.js';
@@ -135,7 +136,25 @@ function itemsEditor(container, { group, split, currency, onChange }) {
     update();
   });
 
+  const pasteBtn = h('button.btn.block', { type: 'button', on: { click: () => {
+    openReceiptSheet({ currency, onApply: ({ items, servicePct, vatPct, total }) => {
+      const onlyBlank = s.items.length === 1 && !s.items[0].name.trim() && !(s.items[0].price > 0) && !s.items[0].memberIds.length;
+      if (onlyBlank) s.items.length = 0;
+      for (const it of items) {
+        const d = { name: it.name, price: it.price, memberIds: [] };
+        priceText.set(d, toText(it.price));
+        s.items.push(d);
+      }
+      if (servicePct != null) { s.servicePct = servicePct; serviceIn.value = servicePct ? String(servicePct) : ''; }
+      if (vatPct != null) { s.vatPct = vatPct; vatIn.value = vatPct ? String(vatPct) : ''; }
+      if (total != null) { s.billTotal = total; billIn.value = toText(total); }
+      drawList(); update();
+      toast(`ใส่แล้ว ${items.length} รายการ — แตะเลือกว่าใครกินอะไร`);
+    } });
+  } } }, '📋 วางจากใบเสร็จ');
+
   container.replaceChildren(
+    h('div', { style: 'margin:0 0 10px' }, pasteBtn),
     h('div.card', listBox),
     h('div', { style: 'margin:10px 0' }, addBtn),
     h('div.inline', { style: 'margin:10px 0' },
