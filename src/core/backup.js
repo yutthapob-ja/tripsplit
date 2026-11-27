@@ -1,11 +1,11 @@
 export const SCHEMA_VERSION = 1;
 
-export function serialize({ groups, expenses, settlements }) {
+export function serialize({ groups, expenses, settlements, promptpay = {} }) {
   return JSON.stringify({
     app: 'TripSplit',
     schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
-    groups, expenses, settlements,
+    groups, expenses, settlements, promptpay,
   }, null, 2);
 }
 
@@ -30,7 +30,11 @@ export function parseBackup(text) {
   for (const k of ['expenses', 'settlements']) {
     if (!obj[k].every((r) => okId(r) && ids.has(r.groupId))) return fail('ไฟล์สำรองเสีย (มีรายการที่ไม่มีกลุ่ม)');
   }
-  return { ok: true, data: { groups: obj.groups, expenses: obj.expenses, settlements: obj.settlements } };
+  const promptpay = obj.promptpay ?? {};
+  if (typeof promptpay !== 'object' || Array.isArray(promptpay) || !Object.values(promptpay).every((v) => typeof v === 'string')) {
+    return fail('ไฟล์สำรองเสีย (ข้อมูลพร้อมเพย์ไม่ถูกต้อง)');
+  }
+  return { ok: true, data: { groups: obj.groups, expenses: obj.expenses, settlements: obj.settlements, promptpay } };
 }
 
 export function backupFilename(date) {

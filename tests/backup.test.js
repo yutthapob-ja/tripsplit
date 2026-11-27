@@ -16,7 +16,7 @@ test('serialize -> parseBackup round-trips data', () => {
   assert.ok(meta.exportedAt);
   const r = parseBackup(text);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.data, sample);
+  assert.deepEqual(r.data, { ...sample, promptpay: {} });
 });
 
 test('broken JSON -> ok:false with Thai error', () => {
@@ -65,4 +65,16 @@ test('parseBackup rejects null records, missing ids and orphan groupIds', async 
   assert.equal(parseBackup(wrap({ groups: [{ id: 'g', members: [] }], settlements: [{ id: 's', groupId: 'nope' }] })).ok, false);
   assert.equal(parseBackup(wrap({ schemaVersion: -1 })).ok, false);
   assert.equal(parseBackup(wrap({ groups: [{ id: 'g', members: [] }], expenses: [{ id: 'e', groupId: 'g' }] })).ok, true);
+});
+
+test('backup carries the PromptPay book; old files without it still restore', async () => {
+  const { serialize, parseBackup } = await import('../src/core/backup.js');
+  const r = parseBackup(serialize({ groups: [], expenses: [], settlements: [], promptpay: { 'บี': '0812345678' } }));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.data.promptpay, { 'บี': '0812345678' });
+  const old = parseBackup(JSON.stringify({ app: 'TripSplit', schemaVersion: 1, groups: [], expenses: [], settlements: [] }));
+  assert.equal(old.ok, true);
+  assert.deepEqual(old.data.promptpay, {});
+  const bad = parseBackup(JSON.stringify({ app: 'TripSplit', schemaVersion: 1, groups: [], expenses: [], settlements: [], promptpay: { 'บี': 5 } }));
+  assert.equal(bad.ok, false);
 });
