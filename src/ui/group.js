@@ -1,8 +1,9 @@
 import { h, header, toast, avatar } from './dom.js';
-import { getAll, getByGroup, put, del } from '../store.js';
+import { renderSummaryImage, canvasToFile } from './summary-image.js';
+import { getAll, getByGroup, put, del, getMeta } from '../store.js';
 import { expenseTotalTHB } from '../core/split.js';
 import { balances, simplify } from '../core/balance.js';
-import { summaryText } from '../core/summary.js';
+import { summaryText, summaryModel } from '../core/summary.js';
 import { formatAmount } from '../core/money.js';
 import { newId } from '../core/model.js';
 import { go } from '../router.js';
@@ -18,6 +19,7 @@ export async function groupView(root, { id }) {
   const group = (await getAll('groups')).find((g) => g.id === id);
   if (!group) return go('#/');
   const [expenses, settlements] = await Promise.all([getByGroup('expenses', id), getByGroup('settlements', id)]);
+  const promptpayBook = (await getMeta('promptpay').catch(() => null)) || {};
   expenses.sort((a, b) => (b.date + b.createdAt).localeCompare(a.date + a.createdAt));
   const name = (mid) => group.members.find((m) => m.id === mid)?.name ?? '?';
   let tab = tabState[id] || 'bills';
@@ -98,6 +100,46 @@ export async function groupView(root, { id }) {
     return h('ul.list.card', items);
   }
 
+  function download(file) {
+    const url = URL.createObjectURL(file);
+    const a = h('a', { href: url, download: file.name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  // Must stay synchronous up to navigator.share (iOS user-gesture rule).
+  function shareImage() {
+    let file;
+    try {
+      const model = summaryModel(group, expenses, settlements, promptpayBook, { roundBaht });
+      const safe = (group.name || 'summary').replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 40);
+      file = canvasToFile(renderSummaryImage(model), `tripsplit-${safe}.png`);
+    } catch (err) { console.error(err); toast('สร้างรูปไม่สำเร็จ'); return; }
+    if (navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file] }).catch((err) => {
+        if (err?.name === 'AbortError') return;
+        if (err?.name === 'NotAllowedError') return download(file);
+        console.error(err); toast('แชร์ไม่สำเร็จ');
+      });
+    } else download(file);
+  }
+  function previewImage() {
+    let url;
+    try {
+      const model = summaryModel(group, expenses, settlements, promptpayBook, { roundBaht });
+      url = renderSummaryImage(model).toDataURL('image/png');
+    } catch (err) { console.error(err); toast('สร้างรูปไม่สำเร็จ'); return; }
+    const close = () => ov.remove();
+    const ov = h('div', { role: 'dialog', 'aria-label': 'ตัวอย่างรูปสรุป',
+      style: 'position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.6);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px' },
+    h('div', { style: 'max-width:560px;margin:0 auto' },
+      h('button.btn.block', { type: 'button', style: 'margin-bottom:10px', on: { click: close } }, 'ปิด'),
+      h('img', { src: url, alt: 'สรุปทริป', style: 'width:100%;display:block;border-radius:12px;background:#fff' })));
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    document.body.append(ov);
+  }
+
   function summaryTab() {
     const bal = balances(group, expenses, settlements);
     const transfers = simplify(bal);
@@ -143,6 +185,9 @@ export async function groupView(root, { id }) {
       h('label.row', { style: 'padding:14px 4px' },
         h('input', { type: 'checkbox', style: 'width:22px;min-height:22px', checked: roundBaht, on: { change: (e) => (roundBaht = e.target.checked) } }),
         h('span', 'ปัดเป็นบาทเต็มตอนคัดลอก')),
+      h('button.btn.primary.block', { type: 'button', on: { click: shareImage } }, '📸 ส่งสรุปเป็นรูป'),
+      h('div', { style: 'text-align:center;margin:6px 0 12px' },
+        h('button.btn.small', { type: 'button', on: { click: previewImage } }, 'ดูรูปก่อน')),
       h('button.btn.block', { type: 'button', on: { click: async () => {
         const text = summaryText(group, expenses, settlements, { roundBaht });
         try { await navigator.clipboard.writeText(text); toast('คัดลอกแล้ว วางในไลน์ได้เลย'); }

@@ -42,14 +42,19 @@ export function confirmBox(msg) {
 }
 
 const AVATAR_COLORS = ['#FF8A65', '#4FC3F7', '#9575CD', '#4DB6AC', '#F06292', '#FFB74D', '#7986CB', '#81C784', '#BA68C8', '#4DD0E1'];
-/** Colored initial bubble; color is stable per member id. */
-export function avatar(member, size = 36) {
+/** Stable avatar color for a member (same hash everywhere). */
+export function avatarColor(member) {
   const key = String(member.id || member.name || '?');
   let hsh = 0;
   for (const ch of key) hsh = (hsh * 31 + ch.codePointAt(0)) >>> 0;
+  return AVATAR_COLORS[hsh % AVATAR_COLORS.length];
+}
+
+/** Colored initial bubble; color is stable per member id. */
+export function avatar(member, size = 36) {
   const name = (member.name || '?').trim();
   return h('span.avatar', {
-    style: `--av:${AVATAR_COLORS[hsh % AVATAR_COLORS.length]};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px`,
+    style: `--av:${avatarColor(member)};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px`,
     'aria-hidden': 'true',
   }, Array.from(name.replace(/^[เแโใไ]+/, ''))[0] || Array.from(name)[0] || '?');
 }
