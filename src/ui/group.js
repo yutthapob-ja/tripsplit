@@ -1,4 +1,4 @@
-import { h, header, toast } from './dom.js';
+import { h, header, toast, avatar } from './dom.js';
 import { getAll, getByGroup, put, del } from '../store.js';
 import { expenseTotalTHB } from '../core/split.js';
 import { balances, simplify } from '../core/balance.js';
@@ -23,7 +23,7 @@ export async function groupView(root, { id }) {
   const total = expenses.reduce((s, e) => s + (expenseTotalTHB(e, group) || 0), 0);
 
   function billsTab() {
-    if (!expenses.length) return h('div.empty', h('p', 'ยังไม่มีบิล'), h('p', 'กด “+ เพิ่มบิล” ด้านล่าง'));
+    if (!expenses.length) return h('div.empty', h('div.empty-emoji', group.kind === 'meal' ? '🍜' : '🧾'), h('p.title', 'ยังไม่มีบิลเลย'), h('p', 'จ่ายอะไรไปก็กด “+ เพิ่มบิล” ได้เลย'));
     let lastDate = '';
     const items = [];
     for (const e of expenses) {
@@ -33,7 +33,9 @@ export async function groupView(root, { id }) {
       }
       const t = expenseTotalTHB(e, group);
       const payers = e.payers.map((p) => name(p.memberId)).join(', ');
+      const firstPayer = group.members.find((m) => m.id === e.payers[0]?.memberId) || { name: '?' };
       items.push(h('li', h('a.row', { href: `#/g/${id}/e/${e.id}` },
+        avatar(firstPayer),
         h('div.grow', h('div.title', e.title || 'ไม่มีชื่อ'), h('div.sub', `${payers} จ่าย`)),
         h('div.amt',
           e.currency === 'THB' ? h('div', THB(e.amount)) : [h('div', `${formatAmount(e.amount, e.currency)} ${e.currency}`),
@@ -47,23 +49,25 @@ export async function groupView(root, { id }) {
     const transfers = simplify(bal);
     const box = h('div');
     box.append(
-      h('div.card.pad', h('div.sub.muted', 'ยอดรวมทั้งหมด'), h('div.total', THB(total))),
+      h('div.total-card', h('div.sub', `ยอดรวมทั้งหมด ${group.kind === 'meal' ? '🍜' : '✈️'}`), h('div.total', THB(total)),
+        h('div.sub', `${group.members.length} คน · เฉลี่ยคนละ ${THB(Math.round(total / Math.max(1, group.members.length)))}`)),
       h('h2', 'ยอดสุทธิรายคน'),
       h('ul.list.card', group.members.map((m) => {
         const v = bal[m.id] || 0;
-        return h('li.row', h('div.grow.title', m.name),
-          h('div.amt', { class: v > 0 ? 'pos' : v < 0 ? 'neg' : 'muted' }, v > 0 ? `ได้คืน ${THB(v)}` : v < 0 ? `ต้องจ่าย ${THB(-v)}` : 'เคลียร์แล้ว'));
+        return h('li.row', avatar(m), h('div.grow.title', m.name),
+          h('span.pill', { class: v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero' }, v > 0 ? `ได้คืน ${THB(v)}` : v < 0 ? `ต้องจ่าย ${THB(-v)}` : 'เคลียร์แล้ว ✓'));
       })),
       h('h2', 'ต้องโอน'),
       transfers.length
         ? h('ul.list.card', transfers.map((t) => h('li.row',
-            h('div.grow', h('div.title', `${name(t.from)} → ${name(t.to)}`), h('div.sub', THB(t.amount))),
+            h('span.transfer', avatar(group.members.find((m) => m.id === t.from), 30), h('span.arrow', '→'), avatar(group.members.find((m) => m.id === t.to), 30)),
+            h('div.grow', h('div.title', `${name(t.from)} โอนให้ ${name(t.to)}`), h('div.sub', THB(t.amount))),
             h('button.btn.small', { type: 'button', on: { click: async () => {
               await put('settlements', { id: newId(), groupId: id, from: t.from, to: t.to, amount: t.amount, date: new Date().toISOString().slice(0, 10) });
               toast('บันทึกว่าโอนแล้ว');
               go(`#/g/${id}`);
             } } }, 'โอนแล้ว'))))
-        : h('div.card.pad.muted', 'เคลียร์ครบแล้ว 🎉'),
+        : h('div.card.pad.done', '🎉 เคลียร์ครบแล้ว ไม่มีใครติดใคร'),
       settlements.length ? [h('h2', 'โอนคืนแล้ว'), h('ul.list.card', settlements.map((s) => h('li.row',
         h('div.grow.sub', `${name(s.from)} → ${name(s.to)} ${THB(s.amount)}`),
         h('button.icon-btn.small', { type: 'button', 'aria-label': 'ยกเลิก', on: { click: async () => { await del('settlements', s.id); go(`#/g/${id}`); } } }, '↺'))))] : '',

@@ -1,4 +1,4 @@
-import { h, header, toast, confirmBox } from './dom.js';
+import { h, header, toast, confirmBox, avatar } from './dom.js';
 import { getAll, getByGroup, put, deleteGroup } from '../store.js';
 import { newGroup, newId, canRemoveMember, recentMemberNames } from '../core/model.js';
 import { CURRENCIES } from '../core/currencies.js';
@@ -21,7 +21,7 @@ export async function groupSettingsView(root, { id }) {
   const rateBox = h('div.stack');
 
   function drawKind() {
-    kindTabs.replaceChildren(...[['trip', 'ทริป'], ['meal', 'มื้ออาหาร']].map(([k, t]) =>
+    kindTabs.replaceChildren(...[['trip', '✈️ ทริป'], ['meal', '🍜 มื้ออาหาร']].map(([k, t]) =>
       h('button', { type: 'button', class: group.kind === k ? 'on' : '', on: { click: () => { group.kind = k; drawKind(); } } }, t)));
   }
 
@@ -35,14 +35,15 @@ export async function groupSettingsView(root, { id }) {
 
   function drawMembers() {
     memberList.replaceChildren(...group.members.map((m) => h('li.row',
-      h('input.grow', { value: m.name, 'aria-label': 'ชื่อ', on: { input: (e) => (m.name = e.target.value) } }),
+      avatar(m),
+      h('input.grow.plain', { value: m.name, 'aria-label': 'ชื่อ', on: { input: (e) => (m.name = e.target.value) } }),
       h('button.icon-btn.small', { type: 'button', 'aria-label': 'ลบ ' + m.name, on: { click: () => {
         const r = canRemoveMember(m.id, expenses, settlements);
         if (!r.ok) return toast(`ลบไม่ได้ — อยู่ใน: ${r.usedIn.slice(0, 3).join(', ')}${r.usedIn.length > 3 ? '…' : ''}`);
         group.members = group.members.filter((x) => x.id !== m.id);
         drawMembers();
       } } }, '✕'))));
-    if (!group.members.length) memberList.append(h('li.row.muted', 'ยังไม่มีสมาชิก'));
+    if (!group.members.length) memberList.append(h('li.row.muted', '👥 ยังไม่มีใคร — พิมพ์ชื่อเพื่อนด้านล่าง'));
     const have = new Set(group.members.map((m) => m.name));
     sugBox.replaceChildren(...suggestions.filter((n) => !have.has(n)).slice(0, 12).map((n) =>
       h('button.chip', { type: 'button', on: { click: () => addMember(n) } }, '+ ' + n)));
