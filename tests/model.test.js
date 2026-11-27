@@ -87,3 +87,20 @@ test('rescaleExpense converts minor-unit fields between decimal places', () => {
   assert.equal(back.amount, 12000);
   assert.equal(back.split.amounts.a, 12000);
 });
+
+import { duplicateGroup } from '../src/core/model.js';
+
+test('duplicateGroup copies members, kind and rates with fresh ids and a copy name', () => {
+  const g = { id: 'g1', name: 'โตเกียว', kind: 'trip', members: [{ id: 'a', name: 'จา' }, { id: 'b', name: 'บี' }],
+    rates: { JPY: 0.23 }, defaultCurrency: 'THB', createdAt: '2026-01-01', updatedAt: '2026-01-02' };
+  const c = duplicateGroup(g);
+  assert.notEqual(c.id, g.id);
+  assert.equal(c.name, 'โตเกียว (สำเนา)');
+  assert.equal(c.kind, 'trip');
+  assert.deepEqual(c.members.map((m) => m.name), ['จา', 'บี']);
+  assert.ok(c.members.every((m, i) => m.id && m.id !== g.members[i].id));
+  assert.deepEqual(c.rates, { JPY: 0.23 });
+  c.rates.JPY = 1;
+  assert.equal(g.rates.JPY, 0.23); // no shared reference
+  assert.notEqual(c.createdAt, g.createdAt);
+});

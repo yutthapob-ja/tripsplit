@@ -74,3 +74,16 @@ export function rescaleExpense(e, fromCode, toCode) {
   if (s.billTotal != null) s.billTotal = r(s.billTotal);
   return out;
 }
+
+/** New empty trip with the same people, kind and rates (fresh ids, no bills). */
+export function duplicateGroup(g) {
+  const now = new Date().toISOString();
+  return {
+    ...structuredClone(g),
+    id: newId(),
+    name: `${g.name} (สำเนา)`,
+    members: g.members.map((m) => ({ id: newId(), name: m.name })),
+    createdAt: now,
+    updatedAt: now,
+  };
+}

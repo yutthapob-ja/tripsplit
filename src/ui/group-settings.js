@@ -2,7 +2,7 @@ import { h, header, toast, confirmBox, avatar } from './dom.js';
 import { getAll, getByGroup, put, deleteGroup, getMeta, setMeta } from '../store.js';
 import { normalizePromptPay } from '../core/promptpay.js';
 import { lookupPromptPay, setPromptPay } from '../core/contacts.js';
-import { newGroup, newId, canRemoveMember, recentMemberNames, checkMemberEdits, rateUsage } from '../core/model.js';
+import { newGroup, newId, canRemoveMember, recentMemberNames, checkMemberEdits, rateUsage, duplicateGroup } from '../core/model.js';
 import { CURRENCIES } from '../core/currencies.js';
 import { go } from '../router.js';
 
@@ -135,6 +135,13 @@ export async function groupSettingsView(root, { id }) {
     h('h2', 'สกุลเงินที่ใช้ในทริป'),
     h('div.card.pad', rateBox, h('p.hint', 'บิลเงินบาทใช้ได้เลย สกุลอื่นใส่เรตแลกเป็นบาทไว้ (แก้เป็นยอดบาทจริงได้ทีละบิล)')),
     h('div', { style: 'margin-top:24px' }, h('button.btn.primary.block', { type: 'button', on: { click: save } }, 'บันทึก')),
+    isNew ? '' : h('div', { style: 'margin-top:12px' }, h('button.btn.block', { type: 'button', on: { click: async () => {
+      const saved = all.find((x) => x.id === id);
+      const copy = duplicateGroup(saved);
+      await put('groups', copy);
+      toast('ทำสำเนาแล้ว — ตั้งชื่อทริปใหม่ได้เลย');
+      go(`#/g/${copy.id}/settings`);
+    } } }, '📋 ทำสำเนาทริป (เพื่อน + เรตเดิม ไม่มีบิล)')),
     isNew ? '' : h('div', { style: 'margin-top:12px' }, h('button.btn.danger.block', { type: 'button', on: { click: async () => {
       if (!(await confirmBox(`ลบ “${group.name}” และบิลทั้งหมด? กู้คืนไม่ได้ถ้าไม่ได้สำรองไว้`))) return;
       await deleteGroup(group.id);
