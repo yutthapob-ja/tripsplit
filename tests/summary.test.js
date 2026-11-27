@@ -38,3 +38,23 @@ test('rounded summary transfers still add up to the creditor amount', () => {
   assert.ok(amts.every((a) => !a.includes('.')));
   assert.equal(amts.reduce((x, a) => x + Number(a.replace(/,/g, '')), 0), 667);
 });
+
+import { summaryModel } from '../src/core/summary.js';
+
+test('summaryModel gives totals, per-member net, transfers with PromptPay payload when known', () => {
+  const m = summaryModel(group, [e], [], { 'จา': '0812345678' });
+  assert.equal(m.title, 'โตเกียว');
+  assert.equal(m.total, 100000);
+  assert.equal(m.avg, 33333);
+  assert.deepEqual(m.members.map((x) => [x.name, x.net]), [['จา', 66666], ['บี', -33333], ['ซี', -33333]]);
+  assert.equal(m.transfers.length, 2);
+  assert.ok(m.transfers.every((t) => t.toName === 'จา' && t.payload && t.payload.includes('011300668123456785')));
+  assert.equal(m.missing, 0);
+  assert.ok(Array.isArray(m.categories));
+});
+
+test('summaryModel leaves payload null when receiver has no PromptPay, honours roundBaht', () => {
+  const m = summaryModel(group, [e], [], {}, { roundBaht: true });
+  assert.ok(m.transfers.every((t) => t.payload === null && t.amount % 100 === 0));
+  assert.equal(m.transfers.reduce((s, t) => s + t.amount, 0), 66700);
+});
