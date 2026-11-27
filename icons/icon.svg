@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect x="0" y="0" width="512" height="512" fill="#F26B3A"/>
+  <!-- left half of the coin, shifted slightly left -->
+  <path d="M245,126 A130,130 0 0 0 245,386 Z" fill="#FFFFFF"/>
+  <!-- right half of the coin, shifted slightly right -->
+  <path d="M267,126 A130,130 0 0 1 267,386 Z" fill="#FFFFFF"/>
+</svg>
