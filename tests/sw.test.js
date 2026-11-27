@@ -15,7 +15,7 @@ test('every precached asset exists', () => {
 
 test('every app file is precached', () => {
   const walk = (d) => readdirSync(join(root, d)).flatMap((f) => statSync(join(root, d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]);
-  for (const f of walk('src')) assert.ok(assets.includes(f), `missing in ASSETS: ${f}`);
+  for (const f of [...walk('src'), ...walk('vendor')]) assert.ok(assets.includes(f), `missing in ASSETS: ${f}`);
 });
 
 test('precache bypasses HTTP cache', () => {

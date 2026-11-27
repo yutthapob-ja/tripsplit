@@ -1,11 +1,12 @@
-const VERSION = '8aa8ddf197';
+const VERSION = '318cf19f21';
 const CACHE = 'tripsplit-' + VERSION;
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'src/app.js', 'src/router.js', 'src/store.js',
   'src/core/money.js', 'src/core/currencies.js', 'src/core/split.js', 'src/core/balance.js',
-  'src/core/summary.js', 'src/core/backup.js', 'src/core/model.js',
+  'src/core/summary.js', 'src/core/backup.js', 'src/core/model.js', 'src/core/promptpay.js',
+  'src/ui/qr.js', 'vendor/qrcode.js',
   'src/ui/dom.js', 'src/ui/groups.js', 'src/ui/group.js', 'src/ui/group-settings.js',
   'src/ui/expense-form.js', 'src/ui/items-editor.js', 'src/ui/backup-ui.js',
 ];

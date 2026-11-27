@@ -43,3 +43,11 @@ test('mask hides middle digits', () => {
   assert.equal(maskPromptPay('0812345678'), '081-xxx-5678');
   assert.equal(maskPromptPay('1101700203450'), '1-xxxx-xxxxx-45-0');
 });
+
+test('QR module grid for a payload is square and at least version 2', async () => {
+  const { qrModules } = await import('../src/ui/qr.js');
+  const m = qrModules(promptPayPayload(normalizePromptPay('0812345678'), 18000));
+  assert.ok(m.length >= 25);
+  assert.ok(m.every((row) => row.length === m.length));
+  assert.equal(m[0][0], true); // finder pattern corner
+});
