@@ -90,7 +90,7 @@ export async function groupSettingsView(root, { id }) {
     h('h2', 'เรตกลาง (แปลงเป็นบาท)'),
     h('div.card.pad', rateBox, h('p.hint', 'บิลสกุลอื่นจะแปลงด้วยเรตนี้ แก้เป็นยอดบาทจริงได้ทีละบิล')),
     h('div', { style: 'margin-top:24px' }, h('button.btn.primary.block', { type: 'button', on: { click: save } }, 'บันทึก')),
-    isNew ? null : h('div', { style: 'margin-top:12px' }, h('button.btn.danger.block', { type: 'button', on: { click: async () => {
+    isNew ? '' : h('div', { style: 'margin-top:12px' }, h('button.btn.danger.block', { type: 'button', on: { click: async () => {
       if (!(await confirmBox(`ลบ “${group.name}” และบิลทั้งหมด? กู้คืนไม่ได้ถ้าไม่ได้สำรองไว้`))) return;
       await deleteGroup(group.id);
       go('#/');

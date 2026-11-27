@@ -23,9 +23,9 @@ export async function groupsView(root) {
   root.append(
     header('TripSplit', { actions: [h('a.icon-btn.small', { href: '#/backup', 'aria-label': 'สำรองข้อมูล' }, '⛁')] }),
     h('div', { id: 'backup-banner' }),
-    groups.length
+    h('div', groups.length
       ? [section('ทริป', groups.filter((g) => g.kind === 'trip')), section('มื้ออาหาร', groups.filter((g) => g.kind === 'meal'))]
-      : h('div.empty', h('p', 'ยังไม่มีทริปหรือมื้ออาหาร'), h('p', 'กด “+ สร้างใหม่” เพื่อเริ่ม')),
+      : h('div.empty', h('p', 'ยังไม่มีทริปหรือมื้ออาหาร'), h('p', 'กด “+ สร้างใหม่” เพื่อเริ่ม'))),
     h('a.btn.primary.fab', { href: '#/new' }, '+ สร้างใหม่'),
   );
   window.dispatchEvent(new CustomEvent('tripsplit:view', { detail: { root, hasData: groups.length > 0 } }));

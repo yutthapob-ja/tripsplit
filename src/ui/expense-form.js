@@ -213,7 +213,7 @@ export async function expenseFormView(root, { id, eid }) {
       if (!(await confirmBox('ลบบิลนี้?'))) return;
       await del('expenses', e.id);
       go(`#/g/${id}`);
-    } } }, 'ลบบิล')) : null,
+    } } }, 'ลบบิล')) : '',
   );
   if (!found) amountIn.focus();
 }
