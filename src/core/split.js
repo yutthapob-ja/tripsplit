@@ -74,6 +74,9 @@ export function validateExpense(expense, group) {
   if (expense.currency !== 'THB' && expense.actualTHB == null && !(group.rates?.[expense.currency] > 0)) {
     errs.push(`ยังไม่ได้ตั้งเรต ${expense.currency} ของกลุ่มนี้ — ตั้งเรต หรือใส่ยอดบาทจริง`);
   }
+  if (expense.actualTHB != null && !(expense.actualTHB > 0)) errs.push('ยอดบาทจริงต้องมากกว่า 0');
+  const payerIds = (expense.payers || []).map((p) => p.memberId);
+  if (new Set(payerIds).size !== payerIds.length) errs.push('มีคนจ่ายซ้ำ — เลือกคนละครั้งเดียว');
   const s = expense.split || {};
   if (s.type === 'equal' && !(s.memberIds || []).length) errs.push('เลือกคนหารอย่างน้อย 1 คน');
   if (s.type === 'exact') {

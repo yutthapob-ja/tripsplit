@@ -116,5 +116,5 @@ export async function groupSettingsView(root, { id }) {
     } } }, 'ลบกลุ่มนี้')),
   );
   newMember.addEventListener('keydown', (e) => { if (e.key === 'Enter') { addMember(newMember.value); newMember.value = ''; } });
-  if (isNew) nameInput.focus();
+  return { afterMount: () => { if (isNew) nameInput.focus(); } };
 }

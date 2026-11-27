@@ -100,5 +100,5 @@ export async function groupView(root, { id }) {
     tabs, body,
     h('a.btn.primary.fab', { href: `#/g/${id}/new` }, '+ เพิ่มบิล'),
   );
-  window.dispatchEvent(new CustomEvent('tripsplit:view', { detail: { root, hasData: true } }));
+  return { hasData: true };
 }

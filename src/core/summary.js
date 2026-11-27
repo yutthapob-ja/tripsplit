@@ -1,4 +1,4 @@
-import { balances, simplify } from './balance.js';
+import { balances, simplify, roundBalances } from './balance.js';
 import { expenseShares, expenseTotalTHB } from './split.js';
 import { formatAmount } from './money.js';
 
@@ -23,7 +23,8 @@ export function summaryText(group, expenses, settlements, { roundBaht = false } 
     if (!paid[m.id] && !owed[m.id]) continue;
     lines.push(`• ${m.name}: จ่ายไป ฿${fmt(paid[m.id] || 0)} / ส่วนของตัวเอง ฿${fmt(owed[m.id] || 0)}`);
   }
-  const transfers = simplify(balances(group, expenses, settlements));
+  const bal = balances(group, expenses, settlements);
+  const transfers = simplify(roundBaht ? roundBalances(bal) : bal);
   lines.push('');
   if (!transfers.length) {
     lines.push('เคลียร์ครบแล้ว 🎉');

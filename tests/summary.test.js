@@ -30,3 +30,11 @@ test('summary warns when some bills have no rate and are excluded', () => {
   assert.ok(s.includes('⚠️'));
   assert.ok(s.includes('1 บิล'));
 });
+
+test('rounded summary transfers still add up to the creditor amount', () => {
+  const s = summaryText(group, [e], [], { roundBaht: true });
+  const amts = [...s.matchAll(/→ .* ฿([\d,.]+)/g)].map((m) => m[1]);
+  assert.ok(amts.length > 0);
+  assert.ok(amts.every((a) => !a.includes('.')));
+  assert.equal(amts.reduce((x, a) => x + Number(a.replace(/,/g, '')), 0), 667);
+});

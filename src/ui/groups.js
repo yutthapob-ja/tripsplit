@@ -30,5 +30,5 @@ export async function groupsView(root) {
       : h('div.empty', h('div.empty-emoji', '🧳🍕'), h('p.title', 'ยังว่างอยู่เลย'), h('p', 'กด “+ สร้างใหม่” แล้วชวนเพื่อนมาหารกัน'))),
     h('a.btn.primary.fab', { href: '#/new' }, '+ สร้างใหม่'),
   );
-  window.dispatchEvent(new CustomEvent('tripsplit:view', { detail: { root, hasData: groups.length > 0 } }));
+  return { hasData: groups.length > 0 };
 }

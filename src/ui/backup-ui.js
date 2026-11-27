@@ -94,7 +94,7 @@ export async function backupView(root) {
     h('main.stack',
       h('div.card.pad',
         h('p', 'สำรองล่าสุด: ', lastEl),
-        h('p', `ข้อมูลในเครื่อง: ${groups.length} ทริป/มื้อ, ${expenses.length} บิล`),
+        h('p', `ข้อมูลในเครื่อง: ${groups.length} ทริป/มื้อ, ${expenses.length} บิล, ${settlements.length} โอนคืน`),
         h('p.hint', persisted
           ? 'เบราว์เซอร์เก็บข้อมูลถาวรแล้ว'
           : 'อาจถูกล้างได้ — สำรองบ่อย ๆ')),

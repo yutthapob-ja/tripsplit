@@ -6,7 +6,10 @@ export function route(pattern, view) {
   routes.push({ re, keys, view });
 }
 
+let renderSeq = 0;
+
 export async function render() {
+  const token = ++renderSeq;
   const path = location.hash.replace(/^#/, '') || '/';
   const root = document.getElementById('app');
   for (const r of routes) {
@@ -15,10 +18,19 @@ export async function render() {
     const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
     root.replaceChildren();
     window.scrollTo(0, 0);
+    // build off-document so a slow, superseded view can never touch #app
+    const host = document.createElement('div');
     try {
-      await r.view(root, params);
+      const result = await r.view(host, params);
+      if (token !== renderSeq) return;
+      root.replaceChildren(...host.childNodes);
+      if (result && 'hasData' in result) {
+        window.dispatchEvent(new CustomEvent('tripsplit:view', { detail: { root, hasData: result.hasData } }));
+      }
+      result?.afterMount?.();
     } catch (err) {
       console.error(err);
+      if (token !== renderSeq) return;
       root.replaceChildren(Object.assign(document.createElement('p'), { className: 'empty', textContent: 'เกิดข้อผิดพลาด: ' + err.message }));
     }
     return;

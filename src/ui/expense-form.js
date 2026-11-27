@@ -85,15 +85,19 @@ export async function expenseFormView(root, { id, eid }) {
     drawQuick(); drawFx(); drawPayers(); drawSplit(); refresh();
   });
 
+  let actualInvalid = false;
   function drawFx() {
     if (e.currency === 'THB') return fxBox.replaceChildren();
     const rate = group.rates[e.currency];
     const est = rate > 0 ? toSatang(e.amount, e.currency, rate) : null;
     const actualIn = h('input', { inputmode: 'decimal', placeholder: est != null ? formatAmount(est, 'THB') : 'ใส่ยอดบาท',
       value: e.actualTHB != null ? toText(e.actualTHB, 'THB') : '', 'aria-label': 'ยอดบาทจริง' });
+    actualInvalid = false;
     actualIn.addEventListener('input', () => {
       const v = parseAmount(actualIn.value, 2);
       e.actualTHB = actualIn.value.trim() === '' ? null : v;
+      actualInvalid = actualIn.value.trim() !== '' && v == null;
+      actualIn.classList.toggle('invalid', actualInvalid);
       refresh();
     });
     fxBox.replaceChildren(h('div.card.pad',
@@ -106,8 +110,9 @@ export async function expenseFormView(root, { id, eid }) {
   function drawPayers() {
     const multi = e.payers.length > 1;
     const rows = e.payers.map((p, i) => {
-      const sel = h('select', { 'aria-label': 'คนจ่าย', on: { change: (ev) => { p.memberId = ev.target.value; refresh(); } } },
-        group.members.map((m) => h('option', { value: m.id, selected: m.id === p.memberId }, m.name)));
+      const sel = h('select', { 'aria-label': 'คนจ่าย', on: { change: (ev) => { p.memberId = ev.target.value; drawPayers(); refresh(); } } },
+        group.members.filter((m) => !multi || m.id === p.memberId || !e.payers.some((q) => q !== p && q.memberId === m.id))
+          .map((m) => h('option', { value: m.id, selected: m.id === p.memberId }, m.name)));
       if (!multi) return h('div.inline', h('span.shrink.muted', 'จ่ายโดย'), sel);
       const amt = h('input', { inputmode: 'decimal', value: toText(p.amount, e.currency), placeholder: '0', 'aria-label': 'ยอดที่จ่าย',
         on: { input: (ev) => { p.amount = parseAmount(ev.target.value, dec()) ?? 0; drawPayersHint(); refresh(); } } });
@@ -196,6 +201,7 @@ export async function expenseFormView(root, { id, eid }) {
     e.date = dateIn.value || today();
     splitBox._update?.();
     const errs = e.amount > 0 ? validateExpense(e, group) : ['ใส่ยอดเงิน'];
+    if (actualInvalid && e.currency !== 'THB') errs.push('ยอดบาทจริงไม่ถูกต้อง');
     errBox.replaceChildren(...(e.amount > 0 ? errs : []).map((x) => h('li', x)));
     saveBtn.disabled = errs.length > 0;
   }
@@ -233,5 +239,5 @@ export async function expenseFormView(root, { id, eid }) {
       go(`#/g/${id}`);
     } } }, 'ลบบิล')) : '',
   );
-  if (!found) amountIn.focus();
+  return { afterMount: () => { if (!found) amountIn.focus(); } };
 }

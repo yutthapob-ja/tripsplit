@@ -109,3 +109,15 @@ test('itemized bill with real total but no priced dishes is invalid', () => {
   const errs = validateExpense(base({ amount: 85000, payers: [{ memberId: 'a', amount: 85000 }], split }), group);
   assert.ok(errs.some((e) => e.includes('ราคา')));
 });
+
+test('validateExpense rejects zero or negative actual baht', () => {
+  const krw = { currency: 'KRW', amount: 5000, payers: [{ memberId: 'a', amount: 5000 }] };
+  assert.ok(validateExpense(base({ ...krw, actualTHB: 0 }), group).some((e) => e.includes('ยอดบาทจริง')));
+  assert.ok(validateExpense(base({ ...krw, actualTHB: -5 }), group).some((e) => e.includes('ยอดบาทจริง')));
+  assert.ok(!validateExpense(base({ ...krw, actualTHB: 100 }), group).some((e) => e.includes('ยอดบาทจริง')));
+});
+
+test('validateExpense rejects the same person as payer twice', () => {
+  const payers = [{ memberId: 'a', amount: 60000 }, { memberId: 'a', amount: 40000 }];
+  assert.ok(validateExpense(base({ payers }), group).some((e) => e.includes('คนจ่ายซ้ำ')));
+});

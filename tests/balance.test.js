@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { balances, simplify } from '../src/core/balance.js';
+import { balances, simplify, roundBalances } from '../src/core/balance.js';
 
 const members = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }];
 const group = { id: 'g', name: 'โตเกียว', members, rates: { JPY: 0.23 } };
@@ -55,4 +55,22 @@ test('changing rate recalculates only expenses without actual baht', () => {
   assert.equal(after.a, 50000);
   assert.equal(before.b, 35000 - 23000); // e2 fixed at actual baht; only e1 share moves
   assert.equal(after.b, 35000 - 25000);
+});
+
+test('roundBalances rounds to whole baht and still sums to 0', () => {
+  const r = roundBalances({ a: 66667, b: -33333, c: -33334 });
+  assert.equal(Object.values(r).reduce((x, y) => x + y, 0), 0);
+  assert.ok(Object.values(r).every((v) => v % 100 === 0));
+  assert.deepEqual(r, { a: 66700, b: -33300, c: -33400 });
+});
+
+test('roundBalances random inputs sum to 0 with whole-baht values', () => {
+  for (let n = 0; n < 200; n++) {
+    const k = 2 + Math.floor(Math.random() * 6);
+    const vals = Array.from({ length: k - 1 }, () => Math.round((Math.random() - 0.5) * 2000000));
+    vals.push(-vals.reduce((a, b) => a + b, 0));
+    const r = roundBalances(Object.fromEntries(vals.map((v, i) => ['m' + i, v])));
+    assert.equal(Object.values(r).reduce((x, y) => x + y, 0), 0);
+    assert.ok(Object.values(r).every((v) => v % 100 === 0));
+  }
 });

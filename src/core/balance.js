@@ -34,3 +34,25 @@ export function simplify(bal) {
   }
   return out;
 }
+
+/**
+ * Round balances to whole baht (multiples of 100 satang) so they still sum to 0:
+ * the credit side and debit side each round to the same whole-baht total, then
+ * largest remainder spreads it inside each side.
+ */
+export function roundBalances(bal) {
+  const out = Object.fromEntries(Object.keys(bal).map((id) => [id, 0]));
+  const side = (sign, total) => {
+    const ids = Object.keys(bal).filter((id) => bal[id] * sign > 0);
+    const base = ids.map((id) => Math.floor((bal[id] * sign) / 100));
+    let extra = total - base.reduce((a, b) => a + b, 0);
+    const order = ids.map((id, i) => [i, (bal[id] * sign) % 100]).sort((x, y) => y[1] - x[1]);
+    for (const [i] of order) if (extra-- > 0) base[i]++;
+    ids.forEach((id, i) => (out[id] = sign * base[i] * 100));
+  };
+  const credit = Object.values(bal).reduce((a, v) => a + (v > 0 ? v : 0), 0);
+  const total = Math.round(credit / 100);
+  side(1, total);
+  side(-1, total);
+  return out;
+}
