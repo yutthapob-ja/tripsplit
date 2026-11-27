@@ -6,6 +6,7 @@ import { summaryText } from '../core/summary.js';
 import { formatAmount } from '../core/money.js';
 import { newId } from '../core/model.js';
 import { go } from '../router.js';
+import { categoryOf, categoryTotals } from '../core/categories.js';
 import { openQrSheet } from './qr-sheet.js';
 
 const tabState = {};
@@ -37,7 +38,7 @@ export async function groupView(root, { id }) {
       const firstPayer = group.members.find((m) => m.id === e.payers[0]?.memberId) || { name: '?' };
       items.push(h('li', h('a.row', { href: `#/g/${id}/e/${e.id}` },
         avatar(firstPayer),
-        h('div.grow', h('div.title', e.title || 'ไม่มีชื่อ'), h('div.sub', `${payers} จ่าย`)),
+        h('div.grow', h('div.title', e.title || 'ไม่มีชื่อ'), h('div.sub', `${e.category ? categoryOf(e.category).emoji + ' ' : ''}${payers} จ่าย`)),
         h('div.amt',
           e.currency === 'THB' ? h('div', THB(e.amount)) : [h('div', `${formatAmount(e.amount, e.currency)} ${e.currency}`),
             h('div.sub', t == null ? 'ยังไม่ตั้งเรต' : (e.actualTHB != null ? 'จริง ' : '≈ ') + THB(t))]))));
@@ -50,11 +51,17 @@ export async function groupView(root, { id }) {
     const transfers = simplify(bal);
     const missing = expenses.filter((e) => expenseTotalTHB(e, group) == null).length;
     const box = h('div');
+    const cats = categoryTotals(group, expenses);
+    const catSection = cats.length && total > 0 ? [h('h2', 'ใช้ไปกับอะไร'), h('div.card.pad', cats.map((c) => h('div.cat-row',
+      h('div.cat-head', h('span.cat-name', `${c.emoji} ${c.label}`), h('span.cat-amt', `฿${formatAmount(c.total, 'THB')}`),
+        h('span.cat-pct', `${Math.round(c.share * 100)}%`)),
+      h('div.cat-bar', h('div.cat-fill', { style: `width:${c.share * 100}%;background:${c.color}` })))))] : [];
     box.append(
       missing ? h('div.banner', h('span.grow', `⚠️ ยังไม่รวม ${missing} บิลที่ไม่มีเรตแลกเงิน`),
         h('a.btn.small', { href: `#/g/${id}/settings` }, 'ตั้งเรต')) : '',
       h('div.total-card', h('div.sub', `ยอดรวมทั้งหมด ${group.kind === 'meal' ? '🍜' : '✈️'}`), h('div.total', THB(total)),
         h('div.sub', `${group.members.length} คน · เฉลี่ยคนละ ${THB(Math.round(total / Math.max(1, group.members.length)))}`)),
+      ...catSection,
       h('h2', 'ยอดสุทธิรายคน'),
       h('ul.list.card', group.members.map((m) => {
         const v = bal[m.id] || 0;

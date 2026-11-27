@@ -5,6 +5,7 @@ import { parseAmount, formatAmount, toSatang } from '../core/money.js';
 import { CURRENCIES, decimalsOf, labelOf } from '../core/currencies.js';
 import { newId, rescaleExpense } from '../core/model.js';
 import { go } from '../router.js';
+import { CATEGORIES, guessCategory } from '../core/categories.js';
 
 const editors = {};
 /** Later modules plug in extra split editors: fn(container, {group, split, currency, onChange(split, amount)}) */
@@ -205,7 +206,17 @@ export async function expenseFormView(root, { id, eid }) {
     errBox.replaceChildren(...(e.amount > 0 ? errs : []).map((x) => h('li', x)));
     saveBtn.disabled = errs.length > 0;
   }
-  titleIn.addEventListener('input', refresh);
+  // ---- category picker (auto-guess from title until the user taps a chip)
+  let catPicked = !!found;
+  const catBox = h('div.chips');
+  function drawCats() {
+    catBox.replaceChildren(...CATEGORIES.map((c) => h('button.chip', { type: 'button', class: e.category === c.id ? 'on' : '',
+      on: { click: () => { catPicked = true; e.category = e.category === c.id ? null : c.id; drawCats(); } } }, `${c.emoji} ${c.label}`)));
+  }
+  titleIn.addEventListener('input', () => {
+    if (!catPicked) { e.category = guessCategory(titleIn.value); drawCats(); }
+    refresh();
+  });
   dateIn.addEventListener('change', refresh);
 
   saveBtn.addEventListener('click', async () => {
@@ -215,6 +226,8 @@ export async function expenseFormView(root, { id, eid }) {
     const now = new Date().toISOString();
     e.createdAt = e.createdAt || now;
     e.updatedAt = now;
+    if (!e.category && e.split.type === 'items' && !catPicked) e.category = guessCategory(e.title) || 'food';
+    if (!e.category) delete e.category;
     if (e.split.type === 'exact') e.split.amounts = Object.fromEntries(Object.entries(e.split.amounts).filter(([, v]) => v > 0));
     await put('expenses', e);
     await put('groups', { ...group, updatedAt: now });
@@ -222,12 +235,13 @@ export async function expenseFormView(root, { id, eid }) {
     go(`#/g/${id}`);
   });
 
-  drawQuick(); drawFx(); drawPayers(); drawSplit(); refresh();
+  drawQuick(); drawFx(); drawPayers(); drawSplit(); drawCats(); refresh();
   root.append(
     header(found ? 'แก้บิล' : 'เพิ่มบิล', { back: `#/g/${id}` }),
     h('div.inline', { style: 'margin-top:8px' }, amountIn, currencySel),
     quickBox,
     h('label.field', h('span', 'ชื่อบิล'), titleIn),
+    h('div.field', h('span', 'หมวด'), catBox),
     fxBox,
     h('h2', 'ใครจ่าย'), payersBox,
     h('h2', 'หารยังไง'), splitTabs, splitBox,
