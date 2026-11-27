@@ -1,4 +1,4 @@
-const VERSION = '05aad0ef4f';
+const VERSION = '1f515342bb';
 const CACHE = 'tripsplit-' + VERSION;
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
@@ -6,7 +6,7 @@ const ASSETS = [
   'src/app.js', 'src/router.js', 'src/store.js',
   'src/core/money.js', 'src/core/currencies.js', 'src/core/split.js', 'src/core/balance.js',
   'src/core/summary.js', 'src/core/backup.js', 'src/core/model.js', 'src/core/promptpay.js', 'src/core/contacts.js',
-  'src/ui/qr.js', 'vendor/qrcode.js',
+  'src/ui/qr.js', 'src/ui/qr-sheet.js', 'vendor/qrcode.js',
   'src/ui/dom.js', 'src/ui/groups.js', 'src/ui/group.js', 'src/ui/group-settings.js',
   'src/ui/expense-form.js', 'src/ui/items-editor.js', 'src/ui/backup-ui.js',
 ];

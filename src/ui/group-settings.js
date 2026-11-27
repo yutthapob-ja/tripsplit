@@ -1,5 +1,7 @@
 import { h, header, toast, confirmBox, avatar } from './dom.js';
-import { getAll, getByGroup, put, deleteGroup } from '../store.js';
+import { getAll, getByGroup, put, deleteGroup, getMeta, setMeta } from '../store.js';
+import { normalizePromptPay } from '../core/promptpay.js';
+import { lookupPromptPay, setPromptPay } from '../core/contacts.js';
 import { newGroup, newId, canRemoveMember, recentMemberNames, checkMemberEdits, rateUsage } from '../core/model.js';
 import { CURRENCIES } from '../core/currencies.js';
 import { go } from '../router.js';
@@ -12,6 +14,9 @@ export async function groupSettingsView(root, { id }) {
   group = structuredClone(group);
   const [expenses, settlements] = isNew ? [[], []] : await Promise.all([getByGroup('expenses', id), getByGroup('settlements', id)]);
   const suggestions = recentMemberNames(all);
+  const book = (await getMeta('promptpay')) || {};
+  const pp = {}; // member id -> typed PromptPay text
+  for (const m of group.members) pp[m.id] = lookupPromptPay(book, m.name) || '';
 
   const nameInput = h('input', { value: group.name, placeholder: 'เช่น โตเกียว ธ.ค. 69 / ข้าวเย็นวันศุกร์', maxlength: 60 });
   const kindTabs = h('div.tabs');
@@ -29,14 +34,24 @@ export async function groupSettingsView(root, { id }) {
     name = name.trim();
     if (!name) return;
     if (group.members.some((m) => m.name === name)) return toast('มีชื่อนี้แล้ว');
-    group.members.push({ id: newId(), name });
+    const m = { id: newId(), name };
+    pp[m.id] = lookupPromptPay(book, name) || '';
+    group.members.push(m);
     drawMembers();
   }
 
   function drawMembers() {
     memberList.replaceChildren(...group.members.map((m) => h('li.row',
       avatar(m),
-      h('input.grow.plain', { value: m.name, 'aria-label': 'ชื่อ', on: { input: (e) => (m.name = e.target.value) } }),
+      h('div.grow.member-fields',
+        h('input.plain', { value: m.name, 'aria-label': 'ชื่อ', on: { input: (e) => (m.name = e.target.value) } }),
+        h('input.pp-input', { value: pp[m.id] || '', inputmode: 'numeric', autocomplete: 'off', placeholder: 'พร้อมเพย์ (ไม่บังคับ)',
+          'aria-label': `พร้อมเพย์ ${m.name}`, class: pp[m.id] && !normalizePromptPay(pp[m.id]) ? 'invalid' : '',
+          on: { input: (e) => {
+            pp[m.id] = e.target.value;
+            const v = e.target.value.trim();
+            e.target.classList.toggle('invalid', !!v && !normalizePromptPay(v));
+          } } })),
       h('button.icon-btn.small', { type: 'button', 'aria-label': 'ลบ ' + m.name, on: { click: () => {
         const r = canRemoveMember(m.id, expenses, settlements);
         if (!r.ok) return toast(`ลบไม่ได้ — อยู่ใน: ${r.usedIn.slice(0, 3).join(', ')}${r.usedIn.length > 3 ? '…' : ''}`);
@@ -91,6 +106,17 @@ export async function groupSettingsView(root, { id }) {
     if (unset.length) return toast(`ใส่เรต ${unset.join(', ')} ก่อน หรือกด ✕ เอาออก`);
     group.members = chk.members;
     if (!group.members.length) return toast('เพิ่มสมาชิกอย่างน้อย 1 คน');
+    let nextBook = book;
+    for (const m of group.members) {
+      const v = (pp[m.id] || '').trim();
+      if (!v) continue;
+      if (!normalizePromptPay(v)) return toast(`เลขพร้อมเพย์ของ ${m.name} ไม่ถูกต้อง`);
+    }
+    for (const m of group.members) {
+      const v = (pp[m.id] || '').trim();
+      nextBook = setPromptPay(nextBook, m.name, v ? normalizePromptPay(v).id : null);
+    }
+    await setMeta('promptpay', nextBook);
     group.updatedAt = new Date().toISOString();
     await put('groups', group);
     go(`#/g/${group.id}`);

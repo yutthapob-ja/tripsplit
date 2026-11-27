@@ -6,6 +6,7 @@ import { summaryText } from '../core/summary.js';
 import { formatAmount } from '../core/money.js';
 import { newId } from '../core/model.js';
 import { go } from '../router.js';
+import { openQrSheet } from './qr-sheet.js';
 
 const tabState = {};
 const THB = (s) => '฿' + formatAmount(s, 'THB');
@@ -62,14 +63,20 @@ export async function groupView(root, { id }) {
       })),
       h('h2', 'ต้องโอน'),
       transfers.length
-        ? h('ul.list.card', transfers.map((t) => h('li.row',
+        ? h('ul.list.card', transfers.map((t) => {
+          const markPaid = async () => {
+            await put('settlements', { id: newId(), groupId: id, from: t.from, to: t.to, amount: t.amount, date: new Date().toISOString().slice(0, 10) });
+            toast('บันทึกว่าโอนแล้ว');
+            go(`#/g/${id}`);
+          };
+          return h('li.row',
             h('span.transfer', avatar(group.members.find((m) => m.id === t.from), 30), h('span.arrow', '→'), avatar(group.members.find((m) => m.id === t.to), 30)),
             h('div.grow', h('div.title', `${name(t.from)} โอนให้ ${name(t.to)}`), h('div.sub', THB(t.amount))),
-            h('button.btn.small', { type: 'button', on: { click: async () => {
-              await put('settlements', { id: newId(), groupId: id, from: t.from, to: t.to, amount: t.amount, date: new Date().toISOString().slice(0, 10) });
-              toast('บันทึกว่าโอนแล้ว');
-              go(`#/g/${id}`);
-            } } }, 'โอนแล้ว'))))
+            h('button.btn.small', { type: 'button', 'aria-label': `QR พร้อมเพย์ ${name(t.from)} โอนให้ ${name(t.to)}`, on: { click: () => openQrSheet({
+              fromName: name(t.from), toName: name(t.to), toMember: group.members.find((m) => m.id === t.to), amountSatang: t.amount, onPaid: markPaid,
+            }) } }, 'QR'),
+            h('button.btn.small', { type: 'button', on: { click: markPaid } }, 'โอนแล้ว'));
+        }))
         : h('div.card.pad.done', '🎉 เคลียร์ครบแล้ว ไม่มีใครติดใคร'),
       settlements.length ? [h('h2', 'โอนคืนแล้ว'), h('ul.list.card', settlements.map((s) => h('li.row',
         h('div.grow.sub', `${name(s.from)} → ${name(s.to)} ${THB(s.amount)}`),

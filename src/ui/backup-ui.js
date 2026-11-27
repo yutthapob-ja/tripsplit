@@ -37,10 +37,10 @@ async function doBackup(file) {
 }
 
 export async function backupView(root) {
-  const [groups, expenses, settlements, last] = await Promise.all([
-    getAll('groups'), getAll('expenses'), getAll('settlements'), getMeta('lastBackupAt'),
+  const [groups, expenses, settlements, last, promptpay] = await Promise.all([
+    getAll('groups'), getAll('expenses'), getAll('settlements'), getMeta('lastBackupAt'), getMeta('promptpay'),
   ]);
-  const file = new File([serialize({ groups, expenses, settlements })], backupFilename(new Date()), { type: 'application/json' });
+  const file = new File([serialize({ groups, expenses, settlements, promptpay: promptpay || {} })], backupFilename(new Date()), { type: 'application/json' });
   let persisted = false;
   try { persisted = !!(await navigator.storage?.persisted?.()); } catch { /* ignore */ }
 
@@ -78,6 +78,7 @@ export async function backupView(root) {
             `แทนที่ข้อมูลทั้งหมดในเครื่องด้วยไฟล์นี้? (${data.groups.length} กลุ่ม, ${data.expenses.length} บิล) ข้อมูลปัจจุบันจะหายไป`);
           if (!ok) return;
           await replaceAll(data);
+          await setMeta('promptpay', data.promptpay);
           toast('กู้คืนแล้ว');
           go('#/');
         } catch (err) {
